@@ -31,6 +31,7 @@
 #include "sessionlog.h"
 #include "controllermanager.h"
 #include "settings.h"
+#include "externalinput.h"
 
 #include <QObject>
 #include <QImage>
@@ -193,6 +194,7 @@ class StreamSession : public QObject
 		uint8_t led_color[3];
 		uint8_t player_index;
 		QHash<int, Controller *> controllers;
+		ExternalInput *external_input = nullptr;
 #if CHIAKI_GUI_ENABLE_SETSU
 		Setsu *setsu;
 		QMap<QPair<QString, SetsuTrackingId>, uint8_t> setsu_ids;

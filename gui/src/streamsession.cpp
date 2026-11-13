@@ -709,10 +709,20 @@ StreamSession::StreamSession(const StreamSessionConnectInfo &connect_info, QObje
 	});
 
 	StartAudioOutDrainThread();
+
+	// DuoPlay: externally mixed controller input (inactive unless env vars are set)
+	external_input = ExternalInput::CreateFromEnvironment(this);
+	if(external_input)
+	{
+		CHIAKI_LOGI(GetChiakiLog(), "External controller input enabled, local controller input is ignored");
+		connect(external_input, &ExternalInput::StateChanged, this, &StreamSession::SendFeedbackState);
+	}
 }
 
 StreamSession::~StreamSession()
 {
+	delete external_input;
+	external_input = nullptr;
 	mic_active.storeRelaxed(false);
 	StopAudioOutDrainThread();
 	if(audio_out)
@@ -1269,6 +1279,14 @@ void StreamSession::DpadSendFeedbackState()
 	ChiakiControllerState state;
 	chiaki_controller_state_set_idle(&state);
 
+	if(external_input)
+	{
+		// DuoPlay: the external mixer is the single source of truth
+		state = external_input->GetState();
+		chiaki_session_set_controller_state(&session, &state);
+		return;
+	}
+
 #if CHIAKI_GUI_ENABLE_SETSU
 	// setsu is the one that potentially has gyro/accel/orient so copy that directly first
 	state = setsu_state;
@@ -1324,6 +1342,14 @@ void StreamSession::SendFeedbackState()
 {
 	ChiakiControllerState state;
 	chiaki_controller_state_set_idle(&state);
+
+	if(external_input)
+	{
+		// DuoPlay: the external mixer is the single source of truth
+		state = external_input->GetState();
+		chiaki_session_set_controller_state(&session, &state);
+		return;
+	}
 
 #if CHIAKI_GUI_ENABLE_SETSU
 	// setsu is the one that potentially has gyro/accel/orient so copy that directly first
